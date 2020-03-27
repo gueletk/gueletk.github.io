@@ -1,0 +1,12 @@
+# IDE files
+.idea
+*.iml
+
+# ignore vagrant
+.vagrant
+
+# Local database config
+/config/database.yml
+
+# DS_Store
+.DS_Store
