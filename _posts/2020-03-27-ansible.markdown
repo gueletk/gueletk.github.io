@@ -1,4 +1,9 @@
-###Learning about ansible (Part 1)
+---	
+layout: post	
+title:  "Learning about ansible (Part 1)"	
+date:   2020-03-27 	
+categories: ansible	
+---
 
 A coworker of mine posted this blogpost about "Learning in Public" so this is (hopefully the first) attempt at doing something along those lines. This post got pretty long before I answered all of my questions, so I guess this will be Part 1.
 
