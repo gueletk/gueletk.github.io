@@ -1,0 +1,42 @@
+###Learning about ansible (Part 1)
+
+A coworker of mine posted this blogpost about "Learning in Public" so this is (hopefully the first) attempt at doing something along those lines. This post got pretty long before I answered all of my questions, so I guess this will be Part 1.
+
+I've recently had the opportunity to work more with the devops side of things at my job, and as I'm pretty unfamiliar with the the tools used to set up infrastructure, I figured this would be a good thing to write down as I learn more.
+
+My first question when I started writing this was: "What problem was ansible created to solve?". If you look at an ansible script, it looks fairly simplistic, and my first naive guess would be "to save (in a more readable form than bash) and standardize setup scripts". The only things I know about ansible at this point are:
+
+- there are built-in commands like `apt`, `file`, `copy`, `user`, etc. It kind of gives me the impression that ansible pretty closely wraps around the bash command line (caveat: I have 0 experience working with Windows, so I'll have to google that later) . It also has a `command` option that lets you just enter a straight up bash command.
+- The tasks are broken up into pieces that each have (at least) a name, a tag, and one of the commands that I listed earlier. There are some extra modifiers that can be added like `with_sequence` and `notify` which still pretty closely mirrors the structure of a bash command with the flags that you can pass in (excepting the name and tag options, I think that's one of the features that ansible adds)
+- from what I know about ansible (AKA googled yesterday), there's a community repository of roles (don't know what the difference between a role and a playbook is) called ansible-galaxy that acts pretty much like npm, ruby gems, etc. I think even if this was the main functionality that ansible offered, that would be pretty useful, since I'm sure that (for example) the process to install ruby on a linux server is a pretty good candidate for something to share with the community for the following reasons:
+
+    - It stays consistent for everyone (with the assumption that you're working with a bare server like the kind you get with AWS EC2)
+    - It needs to be updated periodically when new versions come out, and so it makes sense that letting multiple maintainers keep an eye on that would free up individual developers that then use the playbook
+
+Okay, enough theorizing, I'm going to look up some stuff. My main questions (for now of course):
+- What is the main benefit of ansible? Why do people use it?
+- What was done before ansible was available (what pain points prompted its creation)?
+- What tools have been created since that have build on the ansible ideas?
+- (Just out of curiosity) Does ansible support Windows? I know it can be used on OSX (a coworker and I made a setup script for a mac mini last year), but that's also a unix based system. Is ansible just for unix platforms?
+
+Things learned so far:
+- it does look like one of ansible's core goals is to be as lightweight as possible (it relies only on open-ssh and python, and doesn't deploy any agents).
+- ansible does in fact support all operating systems.
+- there's a couple of 'types' in the ansible world: modules, roles, and action plugins. It looks like modules are the base type of small, idempotent steps, but I'm not sure what the difference between action plugins and roles is yet.
+
+It looks like the main pain points that prompted this tool were (based on the Wikipedia article):
+- overly heavy management systems that added useless (to the production env) dependencies
+- inconsistent behaviour based on starting state (the descriptions place a lot of emphasis on modules being idempotent - leaving things in the exact same state regardless of how many times it's executed)
+- it looks like all of those 'commands' that I mentioned earlier are actually modules. Ansible ships with a couple thousand of them so the docs (sensibly) tell you to check to see if it's already implemented before trying to add one.
+
+Some more things I learned about modules:
+- It looks like I was wrong about ansible being a lightweight wrapper around things. Looking at the contribution guidelines for modules, this quote stands out
+- Modules should typically encompass much of the logic for interacting with a resource. A lightweight wrapper around an API that does not contain much logic would likely cause users to offload too much logic into a playbook, and for this reason the module would be rejected. Instead try creating multiple modules for interacting with smaller individual pieces of the API.
+- I think because my first experience with Ansible was just hacking together a bunch of shell script modules, I didn't realize the purpose of the tool. Looking back at that first playbook I worked on, I'm pretty sure that there were much more suitable commands that could have saved us a lot of headache during setup.
+
+I haven't answered all the questions, so next time I think I'll look into:
+- What's the difference between roles and action plugins? How is their purpose different?
+- It looks like Ansible is still going strong as a tool (it was acquired by Red Hat and they support both the open source version and paid products called Ansible Engine and Ansible Tower). So what do the products build on top of ansible add to it? What workflows do they support?
+- How do inventory configurations work? From what I've seen so far, they're lists of servers that ansible loops over, but was that a new idea that ansible came up with? Was the previous SOP for managing servers to install something on all of them instead of ssh-ing into them one at a time/in parallel?
+- apparently modules can be written in any language that returns JSON. How does that work since the only things ansible 'requires' are open-ssh and Python? Do the modules get somehow compiled to a common format?
+- I'd like to ask some more senior developers about what the pre-ansible pain points were and what other problems it solved.
