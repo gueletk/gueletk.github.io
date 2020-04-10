@@ -36,10 +36,12 @@ Okay, so I finally found [where that CPU core calculation came from](https://www
 
 This article goes into detail about one part of the conversation that confused me before: why could adding extra processes slow things down and degrade performance? It turns out (kind of obviously in retrospect) that there are a couple of different considerations here: 
 
-####Memory
+Memory
+-
 A process has a lot of overhead. I would not be able to describe (yet) all of the things that a Rails instance needs to run, but I do know that it's a lot. So assuming that there's a minimum amount of memory and that the process will need some extra to actually do its job, we don't want the `(min_memory + avg_used_memory) * num_workers` number to go above our available RAM. It's possible, but apparently that's when the computer starts [swapping](https://www.quora.com/What-does-it-mean-for-a-machine-to-be-swapping) between the RAM and the hard drive which slows things down. The passenger documentation recommends using threads to do concurrent processing as they need a lot less overhead. 
 
-####Number of CPUs 
+Number of CPUs
+- 
 
 So this is where we get into context-switching overhead. So as far as I understand that article, the real *blocking resource* that we're talking about here is CPU time. So if the task that process1 is responsible for is fetching data from a very slow API and this step blocks that process from doing anything else (a blocking I/O), the CPU is free to take up another process's operations until process1 is ready to rejoin the party. 
 
