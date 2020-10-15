@@ -1,59 +1,59 @@
----
-layout: post
-title:  "Threads/Concurrency"
+---	
+layout: post	
+title:  "Threads/Concurrency"	
 date:   2020-04-10 	
-categories: computer internals, things I don't know yet
+categories: computer internals, things I don't know yet	
 ---
 
-Concurrent processing came up at work this week and it brought to mind a question that had, until now, seemed too esoteric and complicated to answer:
+Concurrent processing came up at work this week and it brought to mind a question that had, until now, seemed too esoteric and complicated to answer: 
 
 > "What are threads?"
 
-There's a couple of things I know about threads.
-- They represent processes that a computer can run.
-- I (think I) know that Javascript runs on one thread (event loop? is that the same thing?) and that's why asynchronous code (Promises) end up being so important, because processes need to be able to jump out out of the loop to free it up for other processes. But the rest of it is pretty foggy.
-- I know that racing conditions are a big thing in multithreaded processing, and if you want a specific piece of code to only be executable by one thread at a time (like updating a database), it needs to be in a mutex (mutual exclusion object).
+There's a couple of things I know about threads. 
+- They represent processes that a computer can run. 
+- I (think I) know that Javascript runs on one thread (event loop? is that the same thing?) and that's why asynchronous code (Promises) end up being so important, because processes need to be able to jump out out of the loop to free it up for other processes. But the rest of it is pretty foggy. 
+- I know that racing conditions are a big thing in multithreaded processing, and if you want a specific piece of code to only be executable by one thread at a time (like updating a database), it needs to be in a mutex (mutual exclusion object). 
 
-So for now my questions are:
+So for now my questions are: 
 
 **How does the number of cores that a CPU has relate to the number of threads it can simultaneously execute?**
 
-So apparently one thread can run AT A TIME on one CPU. Though since hyperthreading (virtual CPUs/cores) is a thing, it would be more accurate to say one thread per core can be executed at any one time. However, the threads do take advantage of time sharing the resources available to the computer, so your 4 core computer can be running 30 threads. And apparently that's what the job of the kernel/OS is. According to Wikipedia, the kernel is responsible 
->for context switching between processes or threads".
+So apparently one thread can run AT A TIME on one CPU. Though since hyperthreading (virtual CPUs/cores) is a thing, it would be more accurate to say one thread per core can be executed at any one time. However, the threads do take advantage of time sharing the resources available to the computer, so your 4 core computer can be running 30 threads. And apparently that's what the job of the kernel/OS is. According to (Wikipedia)[https://en.wikipedia.org/wiki/Kernel_(operating_system)], the kernel is responsible 
+>for context switching between processes or threads". 
 
 This makes sense, the discussion we've had at work in the last couple of weeks mentioned that one of the ways to determine the number of workers/threads for a server is number of cores or 2 x number of cores. So it makes sense that the number of workers we want would depend on the number of cores available - to minimize context switching for the CPU that's executing the process, but what exactly is a worker and how does that relate to threads?   
 
-So that question led to a lot of googling of ruby-specific process management which (unsurprisingly) had very good documentation that helped a lot. Specifically I was looking at the combination of [Phusion Passenger and Apache](https://www.phusionpassenger.com/library/indepth/processes.html) which happens to be what we run the server on at work.
+So that question led to a lot of googling of ruby-specific process management which (unsurprisingly) had very good documentation that helped a lot. Specifically I was looking at the combination of [Phusion Passenger and Apache](https://www.phusionpassenger.com/library/indepth/processes.html) which happens to be what we run the server on at work. 
 
-So the things that I learned were:
-- processes and threads are not the same thing. A process will always contain one or more threads.
-- processes do not share memory. Any information that needs to be shared across processes needs to be in a shared data store.
+So the things that I learned were: 
+- processes and threads are not the same thing. A process will always contain one or more threads. 
+- processes do not share memory. Any information that needs to be shared across processes needs to be in a shared data store. 
 - processes are isolated from each other in terms of crashing. So if one process crashes, Passenger will just start another one
 
 The sample case that I am most familiar with is a Ruby on Rails website running on a couple different servers (let's say 2). Each server has some number of processes (let's say 10 to make the math easy), and all of these processes are behind one domain. So every user that goes to that domain will want to access one of the RoR processes to do website things. The shared data in question is caching and everything that's in the database
 
-Okay, so I finally found [where that CPU core calculation came from](https://www.phusionpassenger.com/library/config/apache/optimization/). And hey! This is a really great article/documentation that actually adresses a bunch of the [questions I had earlier](https://blog.kseniagueletina.com/infrastructure,/cloud,/aws/2020/04/04/instances.html). So in the context of the specific use case I outlined above we did not want passenger to dynamically optimize the number of workers because spinning up a Rails process is very expensive (both in terms of time and CPU usage) AND because the servers in questions were only running the one app.
+Okay, so I finally found [where that CPU core calculation came from](https://www.phusionpassenger.com/library/config/apache/optimization/). And hey! This is a really great article/documentation that actually adresses a bunch of the [questions I had earlier](https://blog.kseniagueletina.com/infrastructure,/cloud,/aws/2020/04/04/instances.html). So in the context of the specific use case I outlined above we did not want passenger to dynamically optimize the number of workers because spinning up a Rails process is very expensive (both in terms of time and CPU usage) AND because the servers in questions were only running the one app. 
 
-This article goes into detail about one part of the conversation that confused me before: why could adding extra processes slow things down and degrade performance? It turns out (kind of obviously in retrospect) that there are a couple of different considerations here:
+This article goes into detail about one part of the conversation that confused me before: why could adding extra processes slow things down and degrade performance? It turns out (kind of obviously in retrospect) that there are a couple of different considerations here: 
 
 Memory
--
-A process has a lot of overhead. I would not be able to describe (yet) all of the things that a Rails instance needs to run, but I do know that it's a lot. So assuming that there's a minimum amount of memory and that the process will need some extra to actually do its job, we don't want the `(min_memory + avg_used_memory) * num_workers` number to go above our available RAM. It's possible, but apparently that's when the computer starts [swapping](https://www.quora.com/What-does-it-mean-for-a-machine-to-be-swapping) between the RAM and the hard drive which slows things down. The passenger documentation recommends using threads to do concurrent processing as they need a lot less overhead.
+- 
+A process has a lot of overhead. I would not be able to describe (yet) all of the things that a Rails instance needs to run, but I do know that it's a lot. So assuming that there's a minimum amount of memory and that the process will need some extra to actually do its job, we don't want the `(min_memory + avg_used_memory) * num_workers` number to go above our available RAM. It's possible, but apparently that's when the computer starts [swapping](https://www.quora.com/What-does-it-mean-for-a-machine-to-be-swapping) between the RAM and the hard drive which slows things down. The passenger documentation recommends using threads to do concurrent processing as they need a lot less overhead. 
 
 Number of CPUs
--
+- 
 
-So this is where we get into context-switching overhead. So as far as I understand that article, the real *blocking resource* that we're talking about here is CPU time. So if the task that process1 is responsible for is fetching data from a very slow API and this step blocks that process from doing anything else (a blocking I/O), the CPU is free to take up another process's operations until process1 is ready to rejoin the party.
+So this is where we get into context-switching overhead. So as far as I understand that article, the real *blocking resource* that we're talking about here is CPU time. So if the task that process1 is responsible for is fetching data from a very slow API and this step blocks that process from doing anything else (a blocking I/O), the CPU is free to take up another process's operations until process1 is ready to rejoin the party. 
 
-So I guess this is where you need to actually think about the kinds of operations your app does, because if you have a lot of blocking operations, having multiple processes per CPU can help out with the throughput (number of requests per second) because you're wasting less CPU time by running another process while the first one is waiting.
+So I guess this is where you need to actually think about the kinds of operations your app does, because if you have a lot of blocking operations, having multiple processes per CPU can help out with the throughput (number of requests per second) because you're wasting less CPU time by running another process while the first one is waiting. 
 
 **Does Javascript always run on one thread?**
 
 Apparently, [not always](https://medium.com/techtrument/multithreading-javascript-46156179cf9a). It seems that I need to separate the idea of javascript from browser implementations of it?
 
-Looking at the [node explanation](https://nodejs.org/en/docs/guides/blocking-vs-non-blocking/) of blocking vs. non-blocking code, it seems that Javascript *is* one threaded, but it relies heavily on asynchronous operations (that don't block the thread) to be fast. So I guess the word "concurrency" doesn't always refer to doing things on multiple threads, it refers to things being done simultaneously.
+Looking at the [node explanation](https://nodejs.org/en/docs/guides/blocking-vs-non-blocking/) of blocking vs. non-blocking code, it seems that Javascript *is* one threaded, but it relies heavily on asynchronous operations (that don't block the thread) to be fast. So I guess the word "concurrency" doesn't always refer to doing things on multiple threads, it refers to things being done simultaneously. 
 
-So that's a little bit about threads. I'm sure that there's a ton of nuances I'm missing here, especially since I derailed a little into Ruby processes there. I think a useful thing to look into next time would be
+So that's a little bit about threads. I'm sure that there's a ton of nuances I'm missing here, especially since I derailed a little into Ruby processes there. I think a useful thing to look into next time would be 
 
 - Look at javascript in a little more detail, I'm curious how/if node is different from the javascript that runs in the browser
 - Look into how Python handles threading differently from Ruby. I know Python has the ability to run C, which does *something* to its ability to work with threads, but I have no idea how/if that affects threads run in actual *Python*. The one implementation I know of is Greenlets, so that would be a good place to start.  
